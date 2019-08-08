@@ -212,11 +212,7 @@ def cluster(data, level, is_distance):
             for j in range(0, d_size):
                 distance_matrix[i, j] = dista(data, i, j)
     else:
-        if is_distance == True :
         distance_matrix = data
-
-        else:
-            print("That is an incorrect value for if your data matrix is a distance matrix")
 
     # generate a data structure that contains the sorted distance information
     dist_from_center=[]
