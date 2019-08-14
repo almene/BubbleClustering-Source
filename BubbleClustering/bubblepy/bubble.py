@@ -53,7 +53,7 @@ def find_min_max(distance_array):
     singleton_bubble = np.empty(distance_array.shape[0])
     minn = maxx = distance_array[0, 0]
     for i in range(0, (distance_array.shape[0] - 1)):
-        singleton_bubble[i] = distance_array[i, i+1]
+        singleton_bubble[i] = distance_array[i, i + 1]
         for j in range((i + 1), distance_array.shape[0]):
             current_comparison = distance_array[i, j]
             if minn > current_comparison:
@@ -65,7 +65,7 @@ def find_min_max(distance_array):
     return minn, maxx, singleton_bubble
 
 
-def memberate(center, radius, sorted_distance):
+def memberate(center, radius, distance_matrix, distance_ranked):
     """
     find which points are within a radius of the selected center
 
@@ -77,8 +77,10 @@ def memberate(center, radius, sorted_distance):
     radius: float
             the length of the radius selected for the sphere
 
-    sorted_distance : list
-                a list of lists of tuples that contains the sorted distance information
+    distance_matrix : np array
+                contains the distance information between points
+    distance_ranked : np array
+                [i,j] matrix where cells contain the index of the jth farthest point from sample i
     Returns
     -------
     reward : float
@@ -99,27 +101,19 @@ def memberate(center, radius, sorted_distance):
             # if a data point is within the radius distance of the center it is added to the membership list
     '''
 
-    # beginning of log speed up but not sure if necessary
+    # log speed up
     ls = 0
-    rs = len(sorted_distance)-1
-    while rs-ls>1:
-        new = math.floor((rs-ls)/2)+ls
-        if sorted_distance[center][new][0] < radius:
+    rs = distance_ranked.shape[0] - 1
+    while rs - ls > 1:
+        new = math.floor((rs - ls) / 2) + ls
+        dist_index = distance_ranked[center, new]
+        if distance_matrix[center, dist_index] < radius:
             ls = new
         else:
             rs = new
 
-    for i in range(0,ls+1):
-        membership.append(sorted_distance[center][i][1])
-
-    ''' # working not log speed up code
-    for i in range(0,len(sorted_distance)):
-        if sorted_distance[center][i][0] < radius:
-            membership.append(sorted_distance[center][i][1])
-        else:
-            # print("not in bubble")
-            break
-    '''
+    for i in range(0, ls + 1):
+        membership.append(distance_ranked[center, i])
 
     reward = 1.0 / len(membership)
     # Reward is inversely proportionate to the number of data items in the bubble
@@ -182,7 +176,7 @@ def snp_to_distance(data_name):
     return data, names
 
 
-def cluster(data, level, is_distance):
+def cluster(data, level, is_distance=True):
     """
         Takes a SNP profile file and generates the Hamming distance matrix
 
@@ -201,12 +195,15 @@ def cluster(data, level, is_distance):
         -------
         associator_matrix: numpy array
             Contains the association data in an n by n array, higher numbers indicate stronger levels of association
+        distance_matrix: numpy array
+            contains the distance matrix used to generate the bubbles
+
         """
     d_size = data.shape[0]
-    iteration = int(10 ** level)*d_size
+    iteration = int(10 ** level) * d_size
     associator_matrix = np.full([d_size, d_size], 0.000001)
     distance_matrix = np.full([d_size, d_size], 0.00)
-    if is_distance == False :
+    if not is_distance:
         # generate the euclidean distance matrix from the supplied data matrix
         for i in range(0, d_size):
             for j in range(0, d_size):
@@ -214,14 +211,16 @@ def cluster(data, level, is_distance):
     else:
         distance_matrix = data
 
-    # generate a data structure that contains the sorted distance information
-    dist_from_center=[]
+    # generate a data structure that contains the sorted list of indices
+    rank_from_center = np.full([d_size, d_size], 0)
     for i in range(0, d_size):
-        distance_by_point=[]
+        distance_by_point = []
         for j in range(0, d_size):
-            distance_by_point.append((distance_matrix[i, j], j))
+            distance_by_point.append(j)
         distance_by_point.sort()
-        dist_from_center.append(distance_by_point)
+        for j in range(0, d_size):
+            rank_from_center[i, j] = distance_by_point[j]
+
     # find the global min/max and the local min distance between two points
     minn, maxx, singleton_distance = find_min_max(distance_matrix)
     maxx -= minn  # normalize the maximum
@@ -240,7 +239,7 @@ def cluster(data, level, is_distance):
             membership = [center]
         else:
             # get the reward and the list of entries that get that association reward
-            reward, membership = memberate(center, radius, dist_from_center)
+            reward, membership = memberate(center, radius, distance_matrix, rank_from_center)
 
         # update the associator matrix with the reward information
         # print(f"{i} center:{center} radius {radius} : {reward}, {membership}")
@@ -254,7 +253,7 @@ def cluster(data, level, is_distance):
             print("*", end='')
 
     # print(f"{minn}, {maxx}")
-    return associator_matrix
+    return associator_matrix, distance_matrix
 
 
 def am_to_tree(associator_matrix, names, level):
@@ -285,7 +284,7 @@ def am_to_tree(associator_matrix, names, level):
 
     suggested_joins.sort(reverse=True)  # sort the list to get a list of suggested join order
 
-    dist = iteration/suggested_joins[0][0]
+    dist = iteration / suggested_joins[0][0]
     # convert the reward into a distance like measure so that large numbers are now small distances
     joins = [(suggested_joins[0], f"({names[suggested_joins[0][1]]}:{dist},{names[suggested_joins[0][2]]}:{dist})")]
     # convert the first suggested join into a confirmed join and build the newick tree for that join
@@ -297,7 +296,7 @@ def am_to_tree(associator_matrix, names, level):
     # initialize iterator for the remainder of the joins
     k = 1
 
-    while len(joins) < d_size-1:
+    while len(joins) < d_size - 1:
         # extract the indexes of the next suggested join
         i = suggested_joins[k][1]
         j = suggested_joins[k][2]
@@ -314,11 +313,11 @@ def am_to_tree(associator_matrix, names, level):
             # generate the identifier for the new subtree
             after = len(joins)
             # calculate the branch length based on the association score and the sample size used to generate that score
-            dist = iteration/suggested_joins[k][0]
+            dist = iteration / suggested_joins[k][0]
 
             # build the left branch of the Newick format tree for the new subtree
             if before_i < 0:  # indicates a leaf node
-                identifier = (before_i*-1)-1  # converts the leaf node into the sample index
+                identifier = (before_i * -1) - 1  # converts the leaf node into the sample index
                 left_branch = f"{names[identifier]}:{dist}"
             # if not a leaf then an internal node with a pre-existing Newick tree
             else:
@@ -326,7 +325,7 @@ def am_to_tree(associator_matrix, names, level):
 
             # build the right branch of the Newick format tree for the new subtree
             if before_j < 0:  # indicates a leaf node
-                identifier = (before_j * -1)-1  # converts the leaf node into the sample index
+                identifier = (before_j * -1) - 1  # converts the leaf node into the sample index
                 right_branch = f"{names[identifier]}:{dist}"
 
             # if not a leaf then an internal node with a pre-existing Newick tree
@@ -378,11 +377,11 @@ def am_to_linkage(associator_matrix, level):
 
     suggested_joins.sort(reverse=True)  # sort the list to get a list of suggested join order
 
-    linkage_matrix = np.full([d_size-1, 4], 0.0)
+    linkage_matrix = np.full([d_size - 1, 4], 0.0)
     last_subtree = list(range(0, d_size))
 
     # convert the reward into a distance like measure so that large numbers are now small distances
-    dist = iteration/suggested_joins[0][0]
+    dist = iteration / suggested_joins[0][0]
 
     linkage_matrix[0, 0] = last_subtree[suggested_joins[0][1]]
     linkage_matrix[0, 1] = last_subtree[suggested_joins[0][2]]
@@ -452,4 +451,177 @@ def am_to_linkage(associator_matrix, level):
         else:
             # increase iterator if skipping line in suggested_joins because information already included
             k += 1
+    return linkage_matrix
+
+
+def am_to_hamming_linkage(associator_matrix, distance_matrix, linkage_type="single"):
+    """
+           Takes an associator matrix and generates a scipy linkage matrix with Hamming linkage distances
+
+           Parameters
+           ----------
+           associator_matrix : numpy array
+                the associator matrix as calculated by the bubble clustering algorithm
+
+           distance_matrix : numpy array
+                the matrix that contains the pairwise distance information
+           linkage_type : string
+                indicates what type of linkage is being used to calculate linkage distances
+
+           Returns
+           -------
+           linkage_matrix: scipy linkage matrix
+               Contains the linkage matrix format of the tree constructed from the supplied association data
+           """
+    d_size = associator_matrix.shape[0]
+    # change AM into list of tuples -> sum_reward_value, i,j
+    suggested_joins = list()
+    for i in range(0, d_size):
+        for j in range(i + 1, d_size):
+            suggested_joins.append((associator_matrix[i, j], i, j))
+
+    suggested_joins.sort(reverse=True)  # sort the list to get a list of suggested join order
+
+    # generate empty linkage matrix and tracker information about the last subtree for each leaf
+
+    linkage_matrix = np.full([d_size - 1, 4], 0.0)
+    last_subtree = list(range(0, d_size))
+
+    if linkage_type == "single":
+
+        # initialize iterator for the remainder of the joins
+        k = 0
+        joins = 0
+
+        while linkage_matrix[-1, -1] == 0.0:
+            i = suggested_joins[k][1]
+            j = suggested_joins[k][2]
+
+            # check to see if the samples are already joined or not,
+            # if they are already joined they will already be part of the same subtree
+
+            if last_subtree[i] != last_subtree[j]:
+
+                # extract the labels of the subtrees being joined
+                before_i = last_subtree[i]
+                before_j = last_subtree[j]
+                # generate the identifier for the new subtree
+                after = joins + d_size
+                # calculate the branch length based the hamming distance between
+                dist = distance_matrix[i, j]
+
+                # calculate the number of leaves in the sub tree
+                if before_i < d_size:  # indicates a leaf node
+                    leaf_count = 1
+                # if not a leaf then an internal node with a pre-existing subtree leaf count
+                else:
+                    identifier = before_i - d_size
+                    leaf_count = linkage_matrix[identifier, 3]
+
+                # calculate the number of leaves in the sub tree
+                if before_j < d_size:  # indicates a leaf node
+                    leaf_count += 1
+
+                # if not a leaf then an internal node with a pre-existing subtree leaf count
+                else:
+                    identifier = before_j - d_size
+                    leaf_count += linkage_matrix[identifier, 3]
+
+                # update the linkage_matrix
+                linkage_matrix[joins, 0] = last_subtree[i]
+                linkage_matrix[joins, 1] = last_subtree[j]
+                linkage_matrix[joins, 2] = dist
+                linkage_matrix[joins, 3] = leaf_count
+
+                # update all instances of last_subtree from old subtree values to new ones
+                for i in range(len(last_subtree)):
+                    if last_subtree[i] == before_j:
+                        last_subtree[i] = after
+                for i in range(len(last_subtree)):
+                    if last_subtree[i] == before_i:
+                        last_subtree[i] = after
+
+                # update iterators
+                k += 1
+                joins += 1
+            else:
+                # increase iterator if skipping line in suggested_joins because information already included
+                k += 1
+
+    if linkage_type == "complete":
+
+        k = 0
+        joins = 0
+
+        while linkage_matrix[-1, -1] == 0.0:
+            i = suggested_joins[k][1]
+            j = suggested_joins[k][2]
+
+            # check to see if the samples are already joined or not,
+            # if they are already joined they will already be part of the same subtree
+
+            if last_subtree[i] != last_subtree[j]:
+
+                # extract the labels of the subtrees being joined
+                before_i = last_subtree[i]
+                before_j = last_subtree[j]
+                # generate the identifier for the new subtree
+                after = joins + d_size
+
+                # calculate the number of leaves in the sub tree
+                if before_i < d_size:  # indicates a leaf node
+                    leaf_count = 1
+                    leaf_membership_left = [before_i]
+                # if not a leaf then an internal node with a pre-existing subtree leaf count
+                else:
+                    identifier = before_i - d_size
+                    leaf_count = linkage_matrix[identifier, 3]
+                    leaf_membership_left = []
+                    for leaf in range(len(last_subtree)):
+                        if last_subtree[leaf] == before_i:
+                            leaf_membership_left.append(leaf)
+
+                # calculate the number of leaves in the sub tree
+                if before_j < d_size:  # indicates a leaf node
+                    leaf_count += 1
+                    leaf_membership_right = [before_j]
+
+                # if not a leaf then an internal node with a pre-existing subtree leaf count
+                else:
+                    identifier = before_j - d_size
+                    leaf_count += linkage_matrix[identifier, 3]
+                    leaf_membership_right = []
+                    for leaf in range(len(last_subtree)):
+                        if last_subtree[leaf] == before_j:
+                            leaf_membership_right.append(leaf)
+
+                # calculate the complete linkage distance between left and right branches
+                dist = 0
+
+                for left in range(len(leaf_membership_left)):
+                    for right in range(len(leaf_membership_right)):
+                        if distance_matrix[left, right] > dist:
+                            dist = distance_matrix[left, right]
+
+                # update the linkage_matrix
+                linkage_matrix[joins, 0] = last_subtree[i]
+                linkage_matrix[joins, 1] = last_subtree[j]
+                linkage_matrix[joins, 2] = dist
+                linkage_matrix[joins, 3] = leaf_count
+
+                # update all instances of last_subtree from old subtree values to new ones
+                for i in range(len(last_subtree)):
+                    if last_subtree[i] == before_j:
+                        last_subtree[i] = after
+                for i in range(len(last_subtree)):
+                    if last_subtree[i] == before_i:
+                        last_subtree[i] = after
+
+                # update iterators
+                k += 1
+                joins += 1
+            else:
+                # increase iterator if skipping line in suggested_joins because information already included
+                k += 1
+
     return linkage_matrix
