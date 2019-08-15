@@ -216,10 +216,10 @@ def cluster(data, level, is_distance=True):
     for i in range(0, d_size):
         distance_by_point = []
         for j in range(0, d_size):
-            distance_by_point.append(j)
+            distance_by_point.append((distance_matrix[i,j],j))
         distance_by_point.sort()
         for j in range(0, d_size):
-            rank_from_center[i, j] = distance_by_point[j]
+            rank_from_center[i, j] = distance_by_point[j][1]
 
     # find the global min/max and the local min distance between two points
     minn, maxx, singleton_distance = find_min_max(distance_matrix)
@@ -240,7 +240,7 @@ def cluster(data, level, is_distance=True):
         else:
             # get the reward and the list of entries that get that association reward
             reward, membership = memberate(center, radius, distance_matrix, rank_from_center)
-
+        membership.sort()
         # update the associator matrix with the reward information
         # print(f"{i} center:{center} radius {radius} : {reward}, {membership}")
         associate(associator_matrix, membership, reward)
@@ -251,7 +251,7 @@ def cluster(data, level, is_distance=True):
                 print(perc, end='')
                 perc += 5
             print("*", end='')
-
+    print()
     # print(f"{minn}, {maxx}")
     return associator_matrix, distance_matrix
 
