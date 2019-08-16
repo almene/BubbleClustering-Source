@@ -89,7 +89,7 @@ def memberate(center, radius, distance_matrix, distance_ranked):
     membership : list
             list of which points are within the selected radial distance from the chosen center
     """
-    membership = []
+
     '''
     #old code attempting to speed up
     for i in range(0, distance_array.shape[0]):
@@ -112,13 +112,7 @@ def memberate(center, radius, distance_matrix, distance_ranked):
         else:
             rs = new
 
-    for i in range(0, ls + 1):
-        membership.append(distance_ranked[center, i])
-
-    reward = 1.0 / len(membership)
-    # Reward is inversely proportionate to the number of data items in the bubble
-    # this allows the algorithm to compensate for over sampling of dense vs sparse regions
-    return reward, membership
+    return ls
 
 
 def associate(associator_matrix, membership, reward):
@@ -140,13 +134,13 @@ def associate(associator_matrix, membership, reward):
     if len(membership) == 1:
         k = membership[0]
         associator_matrix[k, k] += 1
-
-    for i in range(0, len(membership) - 1):
-        i_2 = membership[i]
-        for j in range(i + 1, len(membership)):
-            j_2 = membership[j]
-            # grab pairs from the membership list and add the reward for the bubble to the already accumulated score
-            associator_matrix[i_2, j_2] = associator_matrix[i_2, j_2] + reward
+    else:
+        for i in range(0, len(membership) - 1):
+            i_2 = membership[i]
+            for j in range(i + 1, len(membership)):
+                j_2 = membership[j]
+                # grab pairs from the membership list and add the reward for the bubble to the already accumulated score
+                associator_matrix[i_2, j_2] = associator_matrix[i_2, j_2] + reward
 
 
 def snp_to_distance(data_name):
@@ -226,7 +220,7 @@ def cluster(data, level, is_distance=True):
     maxx -= minn  # normalize the maximum
 
     perc = 0
-
+    membership_count=dict()
     for i in range(0, iteration):
         # generate random center
         center = random.randint(0, d_size - 1)
@@ -234,25 +228,36 @@ def cluster(data, level, is_distance=True):
         radius = random.uniform(0, 1) * maxx + minn
 
         # if the radius < min distance between center and the next closest point, bubble only has center
-        if radius < singleton_distance[center]:
-            reward = .00000000001
-            membership = [center]
-        else:
+        if radius > singleton_distance[center]:
             # get the reward and the list of entries that get that association reward
-            reward, membership = memberate(center, radius, distance_matrix, rank_from_center)
-        membership.sort()
+            ls = memberate(center, radius, distance_matrix, rank_from_center)
+            key = f"{center}_{ls}"
+            if key in membership_count.keys():
+                membership_count[key] += 1
+            else:
+                membership_count[key] = 1
         # update the associator matrix with the reward information
         # print(f"{i} center:{center} radius {radius} : {reward}, {membership}")
-        associate(associator_matrix, membership, reward)
         # Give some indication that the code is doing something, * every 1% to completion and number every 5%
-
+        print ("Bubbling")
         if i % (iteration / 100) == 0:
             if i % (iteration / 20) == 0:
                 print(perc, end='')
                 perc += 5
             print("*", end='')
-    print()
-    # print(f"{minn}, {maxx}")
+    print("\n Associating")
+    for key in membership_count.keys():
+        center, pos = key.split("_")
+        center = int(center)
+        pos = int(pos)
+        membership = []
+        for i in range(0, pos + 1):
+            membership.append(rank_from_center[center, i])
+
+        membership.sort()
+        reward = 1.0 / len(membership) * membership_count[key]
+        associate(associator_matrix, membership, reward)
+
     return associator_matrix, distance_matrix
 
 
