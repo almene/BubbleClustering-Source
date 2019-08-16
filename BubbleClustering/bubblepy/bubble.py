@@ -219,6 +219,7 @@ def cluster(data, level, is_distance=True):
     minn, maxx, singleton_distance = find_min_max(distance_matrix)
     maxx -= minn  # normalize the maximum
 
+    print ("Bubbling")
     perc = 0
     membership_count=dict()
     for i in range(0, iteration):
@@ -239,7 +240,6 @@ def cluster(data, level, is_distance=True):
         # update the associator matrix with the reward information
         # print(f"{i} center:{center} radius {radius} : {reward}, {membership}")
         # Give some indication that the code is doing something, * every 1% to completion and number every 5%
-        print ("Bubbling")
         if i % (iteration / 100) == 0:
             if i % (iteration / 20) == 0:
                 print(perc, end='')
