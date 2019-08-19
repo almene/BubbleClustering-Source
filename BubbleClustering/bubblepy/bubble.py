@@ -170,7 +170,7 @@ def snp_to_distance(data_name):
     return data, names
 
 
-def cluster(data, level, is_distance=True):
+def cluster(data, level, is_distance=True, radius_type="uniform", reward_type=1):
     """
         Takes a SNP profile file and generates the Hamming distance matrix
 
@@ -184,6 +184,11 @@ def cluster(data, level, is_distance=True):
 
         is_distance: boolean
             Indicates if the supplied data is already a distance matrix
+        radius_type : string
+            indicates the desired radii distribution : options include "uniform", "short", "distance" and
+            "unique distance"
+        reward_type: int
+            indicates the reward type 1 = 1/N and 2 = 1/N^2
 
         Returns
         -------
@@ -210,7 +215,7 @@ def cluster(data, level, is_distance=True):
     for i in range(0, d_size):
         distance_by_point = []
         for j in range(0, d_size):
-            distance_by_point.append((distance_matrix[i,j],j))
+            distance_by_point.append((distance_matrix[i, j], j))
         distance_by_point.sort()
         for j in range(0, d_size):
             rank_from_center[i, j] = distance_by_point[j][1]
@@ -219,15 +224,36 @@ def cluster(data, level, is_distance=True):
     minn, maxx, singleton_distance = find_min_max(distance_matrix)
     maxx -= minn  # normalize the maximum
 
-    print ("Bubbling")
     perc = 0
-    membership_count=dict()
+    membership_count = dict()
+    print("Bubbling")
     for i in range(0, iteration):
         # generate random center
         center = random.randint(0, d_size - 1)
         # generate random radius between the min distance between two points and the max distance between two points
-        radius = random.uniform(0, 1) * maxx + minn
+        radius = 0
+        if radius_type == "uniform":
+            radius = random.uniform(0, 1) * maxx + minn
+        elif radius_type == "short":
+            median = np.median(distance_matrix)
+            u = random.uniform(0.00001, 1)
+            radius = median * (u/(1 - u))
+        elif radius_type == "distance":
+            while radius == 0:
+                radius = np.random.choice(distance_matrix.flatten())
+            dist_dist = scipy.spatial.distance.pdist(distance_matrix, metric='euclidean')
+            minimum = np.amin(dist_dist)
+            radius += minimum/2
+        elif radius_type == "unique distance":
+            while radius == 0:
+                radius = np.random.choice(np.unique(distance_matrix.flatten()))
+            dist_dist = scipy.spatial.distance.pdist(distance_matrix, metric='euclidean')
+            minimum = np.amin(dist_dist)
+            radius += minimum/2
 
+        else:
+            print("There has been an error in the radii distribution")
+            break
         # if the radius < min distance between center and the next closest point, bubble only has center
         if radius > singleton_distance[center]:
             # get the reward and the list of entries that get that association reward
@@ -255,7 +281,13 @@ def cluster(data, level, is_distance=True):
             membership.append(rank_from_center[center, i])
 
         membership.sort()
-        reward = 1.0 / len(membership) * membership_count[key]
+        if reward_type == 1:
+            reward = 1.0 / len(membership) * membership_count[key]
+        elif reward_type == 2:
+            reward = 1.0 / (len(membership)**2) * membership_count[key]
+        else:
+            print("There has been a error in the reward type")
+            break
         associate(associator_matrix, membership, reward)
 
     return associator_matrix, distance_matrix
@@ -603,8 +635,10 @@ def am_to_hamming_linkage(associator_matrix, distance_matrix, linkage_type="sing
                 # calculate the complete linkage distance between left and right branches
                 dist = 0
 
-                for left in range(len(leaf_membership_left)):
-                    for right in range(len(leaf_membership_right)):
+                for a in range(len(leaf_membership_left)):
+                    for b in range(len(leaf_membership_right)):
+                        left = leaf_membership_left[a]
+                        right = leaf_membership_right[b]
                         if distance_matrix[left, right] > dist:
                             dist = distance_matrix[left, right]
 
