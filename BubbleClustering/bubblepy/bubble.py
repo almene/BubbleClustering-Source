@@ -266,13 +266,25 @@ def cluster(data, level, is_distance=True, radius_type="uniform", reward_type=1)
         # update the associator matrix with the reward information
         # print(f"{i} center:{center} radius {radius} : {reward}, {membership}")
         # Give some indication that the code is doing something, * every 1% to completion and number every 5%
-        if i % (iteration / 100) == 0:
-            if i % (iteration / 20) == 0:
+        if i % math.floor(iteration / 100) == 0:
+            if i % math.floor(iteration / 20) == 0:
                 print(perc, end='')
                 perc += 5
             print("*", end='')
     print("\n Associating")
+    k = 0
+    itt = len(membership_count.keys())
+    print(itt)
+    perc = 0
     for key in membership_count.keys():
+        if k % math.floor(itt / 20) == 0:
+            print(perc, end='')
+            perc += 5
+
+        if k % math.floor(itt / 100) == 0:
+            print("*", end='')
+        k += 1
+
         center, pos = key.split("_")
         center = int(center)
         pos = int(pos)
