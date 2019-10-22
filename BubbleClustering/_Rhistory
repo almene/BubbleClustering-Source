@@ -1,0 +1,512 @@
+treeDist(test2,test3)
+Scores2<- matrix(0, nrow=50, ncol=3)
+colnames(Scores2)<-c("B4-U", "B4-Q", "B4-E")
+for (i in 1:50){
+mat<-matrix(runif(500,-5,5),nrow=50)
+Scores2[i,1]<- BubStab(mat, 4,1,1) # calculate stablity Bubble L4
+Scores2[i,2]<- BubStab(mat, 4,1,2) # calculate stablity Bubble L4
+Scores2[i,3]<- BubStab(mat, 4,1,3) # calculate stablity Bubble L4
+jpeg("DistributionTest.jpg")
+boxplot(Scores2)
+dev.off()
+write.csv(x=Scores, file = "DistributionTest.csv")
+}
+library(BubbleClustering)
+Scores2<- matrix(0, nrow=50, ncol=3)
+colnames(Scores2)<-c("B4-U", "B4-Q", "B4-E")
+for (i in 1:50){
+mat<-matrix(runif(500,-5,5),nrow=50)
+Scores2[i,1]<- BubStab(mat, 4,1,1) # calculate stablity Bubble L4
+Scores2[i,2]<- BubStab(mat, 4,1,2) # calculate stablity Bubble L4
+Scores2[i,3]<- BubStab(mat, 4,1,3) # calculate stablity Bubble L4
+jpeg("DistributionTest.jpg")
+boxplot(Scores2)
+dev.off()
+write.csv(x=Scores, file = "DistributionTest.csv")
+}
+mat<-matrix(runif(500,-5,5),nrow=50)
+BubStab<- function(data,level=4, Brad=1 ,RadDist=1){ ## data is the data and tree is the Bubble output
+if (is.matrix(data)==FALSE){
+message("The data needs to be a numeric matrix")
+stop()
+}
+if (is.numeric(data)==FALSE){
+message("The data needs to be a numeric matrix")
+stop()
+}
+tree<-bubbleClustering(data,level, Brad, RadDist)
+merge<-tree$merge
+totalStab=0
+LD<-length(data[1,])
+LP<-length(data[,1])
+for (i in 1:LP){
+if (i==1) {rbldDat<-data[c(2:LP),]}
+else if(i==LP) {rbldDat<-data[c(1:(LP-1)), ]}
+else {rbldDat<-data[c(1:(i-1), (i+1):LP),]} ## make the appropriate merge tables with the target data point removed
+RBub<-bubbleClustering(rbldDat,level)
+Sdata<-.Call("snip", merge, i)
+Rdata<-.Call("rebuild", RBub$merge)
+runStab<-sum(sqrt((Sdata- Rdata)^2))
+totalStab<-totalStab+runStab
+}
+totalStab<-totalStab/LP
+return(totalStab)}
+Scores2[i,1]<- BubStab(mat, 4,1,1) # calculate stablity Bubble L4
+boxplot(Scores2)
+Scores2<- matrix(0, nrow=50, ncol=3)
+colnames(Scores2)<-c("B4-U", "B4-Q", "B4-E")
+for (i in 1:50){
+mat<-matrix(runif(500,-5,5),nrow=50)
+Scores2[i,1]<- BubStab(mat, 4,1,1) # calculate stablity Bubble L4
+Scores2[i,2]<- BubStab(mat, 4,1,2) # calculate stablity Bubble L4
+Scores2[i,3]<- BubStab(mat, 4,1,3) # calculate stablity Bubble L4
+jpeg("DistributionTest.jpg")
+boxplot(Scores2)
+dev.off()
+write.csv(x=Scores, file = "DistributionTest.csv")
+}
+boxplot(Scores2)
+Scores2<- matrix(0, nrow=50, ncol=4)
+colnames(Scores2)<-c("B4-U", "B4-Q", "B4-E", H)
+for (i in 1:50){
+mat<-matrix(runif(500,-5,5),nrow=50)
+Scores2[i,1]<- BubStab(mat, 4,1,1) # calculate stablity Bubble L4
+Scores2[i,2]<- BubStab(mat, 4,1,2) # calculate stablity Bubble L4
+Scores2[i,3]<- BubStab(mat, 4,1,3) # calculate stablity Bubble L4
+Scores2[i,4]<- HClustStab(mat)
+jpeg("DistributionTest.jpg")
+boxplot(Scores2)
+dev.off()
+write.csv(x=Scores2, file = "DistributionTest.csv")
+}
+boxplot(Scores2)
+colnames(Scores2)<-c("B4-U", "B4-Q", "B4-E", "H")
+boxplot(Scores2)
+library(dendextend)
+library(flexclust)
+install.packages(flexclust)
+/
+)
+install.packages("flexclust")
+SP01<-read.csv(file = "SP01.csv", header = F)
+SP01<-as.matrix(SP01)
+for (i in 1:15){
+subdat<-SP01[sample(1:2000, 600),]
+TrueClass<-subdat[,3]
+hc<-hclust(dist(subdat[,1:2]))
+dend <- as.dendrogram(hc)
+labels_colors(dend) <- subdat[order.dendrogram(dend),3]
+#make image
+imageName=c("SP01-Run",i,"hclustML.jpg")
+jpeg(paste(imageName, collapse="-"), width=4000, height = 1000)
+plot(dend)
+dev.off()
+#calculate RI and ARI
+hcut<- cutree(hc, k=3)
+hcut2<- cutree(hc, k=4)
+hcut3<- cutree(hc, k=5)
+RISP01[i,1]<-randIndex(TrueClass, hcut, correct = T)
+RISP01[i,2]<-randIndex(TrueClass, hcut2, correct = T)
+RISP01[i,3]<-randIndex(TrueClass, hcut3, correct = T)
+write.csv(x=RISP01, file = "RISP01ML.csv")
+for (a in 1:3){
+levelR<-c(1,2,3)
+imageName=c("SP01-Run",i,"B4-RaduisLevel",levelR[a],"ML.jpg")
+print(paste(imageName, collapse="-"))
+bc<-BubbleClustering(subdat[,1:2], 4, 1,levelR[a])
+dend <- as.dendrogram(bc)
+labels_colors(dend) <- subdat[order.dendrogram(dend),3]
+jpeg(paste(imageName, collapse="-"), width=4000, height = 1000)
+plot(dend)
+dev.off()
+bcut<- cutree(bc, k=2)
+bcut2<- cutree(bc, k=3)
+bcut3<- cutree(bc, k=4)
+RISP01[i,(a*3+1)]<-randIndex(TrueClass, bcut, correct = T)
+RISP01[i,(a*3+2)]<-randIndex(TrueClass, bcut, correct = T)
+RISP01[i,(a*3+3)]<-randIndex(TrueClass, bcut, correct = T)
+write.csv(x=RISP01, file = "RISP01ML.csv")
+}
+}
+library(dendextend)
+library(flexclust)
+for (i in 1:15){
+subdat<-SP01[sample(1:2000, 600),]
+TrueClass<-subdat[,3]
+hc<-hclust(dist(subdat[,1:2]))
+dend <- as.dendrogram(hc)
+labels_colors(dend) <- subdat[order.dendrogram(dend),3]
+#make image
+imageName=c("SP01-Run",i,"hclustML.jpg")
+jpeg(paste(imageName, collapse="-"), width=4000, height = 1000)
+plot(dend)
+dev.off()
+#calculate RI and ARI
+hcut<- cutree(hc, k=3)
+hcut2<- cutree(hc, k=4)
+hcut3<- cutree(hc, k=5)
+RISP01[i,1]<-randIndex(TrueClass, hcut, correct = T)
+RISP01[i,2]<-randIndex(TrueClass, hcut2, correct = T)
+RISP01[i,3]<-randIndex(TrueClass, hcut3, correct = T)
+write.csv(x=RISP01, file = "RISP01ML.csv")
+for (a in 1:3){
+levelR<-c(1,2,3)
+imageName=c("SP01-Run",i,"B4-RaduisLevel",levelR[a],"ML.jpg")
+print(paste(imageName, collapse="-"))
+bc<-BubbleClustering(subdat[,1:2], 4, 1,levelR[a])
+dend <- as.dendrogram(bc)
+labels_colors(dend) <- subdat[order.dendrogram(dend),3]
+jpeg(paste(imageName, collapse="-"), width=4000, height = 1000)
+plot(dend)
+dev.off()
+bcut<- cutree(bc, k=2)
+bcut2<- cutree(bc, k=3)
+bcut3<- cutree(bc, k=4)
+RISP01[i,(a*3+1)]<-randIndex(TrueClass, bcut, correct = T)
+RISP01[i,(a*3+2)]<-randIndex(TrueClass, bcut, correct = T)
+RISP01[i,(a*3+3)]<-randIndex(TrueClass, bcut, correct = T)
+write.csv(x=RISP01, file = "RISP01ML.csv")
+}
+}
+RISP01=matrix(data=0, nrow=15, ncol=18)
+for (i in 1:15){
+subdat<-SP01[sample(1:2000, 600),]
+TrueClass<-subdat[,3]
+hc<-hclust(dist(subdat[,1:2]))
+dend <- as.dendrogram(hc)
+labels_colors(dend) <- subdat[order.dendrogram(dend),3]
+#make image
+imageName=c("SP01-Run",i,"hclustML.jpg")
+jpeg(paste(imageName, collapse="-"), width=4000, height = 1000)
+plot(dend)
+dev.off()
+#calculate RI and ARI
+hcut<- cutree(hc, k=3)
+hcut2<- cutree(hc, k=4)
+hcut3<- cutree(hc, k=5)
+RISP01[i,1]<-randIndex(TrueClass, hcut, correct = T)
+RISP01[i,2]<-randIndex(TrueClass, hcut2, correct = T)
+RISP01[i,3]<-randIndex(TrueClass, hcut3, correct = T)
+write.csv(x=RISP01, file = "RISP01ML.csv")
+for (a in 1:3){
+levelR<-c(1,2,3)
+imageName=c("SP01-Run",i,"B4-RaduisLevel",levelR[a],"ML.jpg")
+print(paste(imageName, collapse="-"))
+bc<-BubbleClustering(subdat[,1:2], 4, 1,levelR[a])
+dend <- as.dendrogram(bc)
+labels_colors(dend) <- subdat[order.dendrogram(dend),3]
+jpeg(paste(imageName, collapse="-"), width=4000, height = 1000)
+plot(dend)
+dev.off()
+bcut<- cutree(bc, k=2)
+bcut2<- cutree(bc, k=3)
+bcut3<- cutree(bc, k=4)
+RISP01[i,(a*3+1)]<-randIndex(TrueClass, bcut, correct = T)
+RISP01[i,(a*3+2)]<-randIndex(TrueClass, bcut, correct = T)
+RISP01[i,(a*3+3)]<-randIndex(TrueClass, bcut, correct = T)
+write.csv(x=RISP01, file = "RISP01ML.csv")
+}
+}
+for (i in 1:15){
+subdat<-SP01[sample(1:2000, 600),]
+TrueClass<-subdat[,3]
+hc<-hclust(dist(subdat[,1:2]))
+dend <- as.dendrogram(hc)
+labels_colors(dend) <- subdat[order.dendrogram(dend),3]
+#make image
+imageName=c("SP01-Run",i,"hclustML.jpg")
+jpeg(paste(imageName, collapse="-"), width=4000, height = 1000)
+plot(dend)
+dev.off()
+#calculate RI and ARI
+hcut<- cutree(hc, k=3)
+hcut2<- cutree(hc, k=4)
+hcut3<- cutree(hc, k=5)
+RISP01[i,1]<-randIndex(TrueClass, hcut, correct = T)
+RISP01[i,2]<-randIndex(TrueClass, hcut2, correct = T)
+RISP01[i,3]<-randIndex(TrueClass, hcut3, correct = T)
+write.csv(x=RISP01, file = "RISP01ML.csv")
+for (a in 1:3){
+levelR<-c(1,2,3)
+imageName=c("SP01-Run",i,"B4-RaduisLevel",levelR[a],"ML.jpg")
+print(paste(imageName, collapse="-"))
+bc<-bubbleClustering(subdat[,1:2], 4, 1,levelR[a])
+dend <- as.dendrogram(bc)
+labels_colors(dend) <- subdat[order.dendrogram(dend),3]
+jpeg(paste(imageName, collapse="-"), width=4000, height = 1000)
+plot(dend)
+dev.off()
+bcut<- cutree(bc, k=2)
+bcut2<- cutree(bc, k=3)
+bcut3<- cutree(bc, k=4)
+RISP01[i,(a*3+1)]<-randIndex(TrueClass, bcut, correct = T)
+RISP01[i,(a*3+2)]<-randIndex(TrueClass, bcut, correct = T)
+RISP01[i,(a*3+3)]<-randIndex(TrueClass, bcut, correct = T)
+write.csv(x=RISP01, file = "RISP01ML.csv")
+}
+}
+boxplot(RISP01)
+RISP01
+Scores2
+Scores2<- matrix(0, nrow=50, ncol=5)
+colnames(Scores2)<-c("B4-U-1", "B4-U-.25","B4-Q", "B4-E", "H")
+for (i in 1:50){
+mat<-matrix(runif(500,-5,5),nrow=50)
+Scores2[i,1]<- BubStab(mat, 4,1,1) # calculate stablity Bubble L4
+Scores2[i,2]<- BubStab(mat, 4,1,.25) # calculate stablity Bubble L4
+Scores2[i,3]<- BubStab(mat, 4,1,2) # calculate stablity Bubble L4
+Scores2[i,4]<- BubStab(mat, 4,1,3) # calculate stablity Bubble L4
+Scores2[i,5]<- HClustStab(mat)
+jpeg("DistributionTest.jpg")
+boxplot(Scores2)
+dev.off()
+write.csv(x=Scores2, file = "DistributionTest.csv")
+}
+Scores2<- matrix(0, nrow=50, ncol=5)
+colnames(Scores2)<-c("B4-U-1", "B4-U-.25","B4-Q", "B4-E", "H")
+for (i in 1:50){
+mat<-matrix(runif(500,-5,5),nrow=50)
+Scores2[i,1]<- BubStab(mat, 4,1,1) # calculate stablity Bubble L4
+Scores2[i,2]<- BubStab(mat, 4,.25,1) # calculate stablity Bubble L4
+Scores2[i,3]<- BubStab(mat, 4,1,2) # calculate stablity Bubble L4
+Scores2[i,4]<- BubStab(mat, 4,1,3) # calculate stablity Bubble L4
+Scores2[i,5]<- HClustStab(mat)
+jpeg("DistributionTest.jpg")
+boxplot(Scores2)
+dev.off()
+write.csv(x=Scores2, file = "DistributionTest.csv")
+}
+boxplot(Scores2)
+x=runif(1,0,1)
+radius=0.49625006+0.39328344*sin(3.89098056*x-1.93639904)
+radius
+radii=radius
+for (i in 1:999){
+x=runif(1,0,1)
+radius=0.49625006+0.39328344*sin(3.89098056*x-1.93639904)
+radii=c(radii, radius)
+}
+hist(radii)
+for (i in 1:9000){
+x=runif(1,0,1)
+radius=0.49625006+0.39328344*sin(3.89098056*x-1.93639904)
+radii=c(radii, radius)
+}
+hist(radii)
+library(BubbleClustering)
+mat<-matrix(runif(500,-5,5),nrow=50)
+Scores2<- matrix(0, nrow=50, ncol=6)
+colnames(Scores2)<-c("B4-U-1", "B4-U-.5","B4-Q", "B4-E", "B4-S", "H")
+mat<-matrix(runif(500,-5,5),nrow=50)
+Scores2[i,5]<- BubStab(mat, 4,1,4) # calculate stablity Bubble L4
+i
+for (i in 1:50){
+mat<-matrix(runif(500,-5,5),nrow=50)
+Scores2[i,1]<- BubStab(mat, 4,1,1) # calculate stablity Bubble L4
+Scores2[i,2]<- BubStab(mat, 4,.5,1) # calculate stablity Bubble L4
+Scores2[i,3]<- BubStab(mat, 4,1,2) # calculate stablity Bubble L4
+Scores2[i,4]<- BubStab(mat, 4,1,3) # calculate stablity Bubble L4
+Scores2[i,5]<- BubStab(mat, 4,1,4) # calculate stablity Bubble L4
+scScores2[i,6]<- HClustStab(mat)
+jpeg("DistributionTest2.jpg")
+boxplot(Scores2)
+dev.off()
+write.csv(x=Scores2, file = "DistributionTest2.csv")
+}
+bloxplot(Scores2)
+boxplot(Scores2)
+for (i in 1:50){
+mat<-matrix(runif(500,-5,5),nrow=50)
+Scores2[i,1]<- BubStab(mat, 4,1,1) # calculate stablity Bubble L4
+Scores2[i,2]<- BubStab(mat, 4,.5,1) # calculate stablity Bubble L4
+Scores2[i,3]<- BubStab(mat, 4,1,2) # calculate stablity Bubble L4
+Scores2[i,4]<- BubStab(mat, 4,1,3) # calculate stablity Bubble L4
+Scores2[i,5]<- BubStab(mat, 4,1,4) # calculate stablity Bubble L4
+Scores2[i,6]<- HClustStab(mat)
+jpeg("DistributionTest2.jpg")
+boxplot(Scores2)
+dev.off()
+write.csv(x=Scores2, file = "DistributionTest2.csv")
+}
+boxplot(Scores2)
+save.image()
+ProbTax<-raed.csv("Datasets/ProblemTaxonomyData.csv", header=F)
+ProbTax<-read.csv("Datasets/ProblemTaxonomyData.csv", header=F)
+ProbTax
+row.names(ProbTax)<-ProbTax[,1]
+ProbTax<-ProbTax[,2:33]
+ProbTax
+ProbTax<-as.matrix(ProbTax)
+head(ProbTax)
+is.numeric(ProbTax)
+library(BubbleClustering)
+Scores2<- matrix(0, nrow=50, ncol=7)
+colnames(Scores2)<-c("B4-U-1", "B4-U-.5","B4-Q", "B4-E", "B4-S","Triplet", "H")
+mat<-ProbTax
+for (i in 1:50){
+Scores2[i,1]<- BubStab(mat, 4,1,1) # calculate stablity Bubble L4
+Scores2[i,2]<- BubStab(mat, 4,.5,1) # calculate stablity Bubble L4
+Scores2[i,3]<- BubStab(mat, 4,1,2) # calculate stablity Bubble L4
+Scores2[i,4]<- BubStab(mat, 4,1,3) # calculate stablity Bubble L4
+Scores2[i,5]<- BubStab(mat, 4,1,4) # calculate stablity Bubble L4
+Scores2[i,6]<- tripletTree(mat)
+Scores2[i,7]<- HClustStab(mat)
+jpeg("DistributionTest-ProbTax.jpg")
+boxplot(Scores2)
+dev.off()
+write.csv(x=Scores2, file = "DistributionTest-ProbTax.csv")
+}
+boxplot(Scores2)
+for (i in 1:50){
+Scores2[i,1]<- BubStab(mat, 4,1,1) # calculate stablity Bubble L4
+Scores2[i,2]<- BubStab(mat, 4,.5,1) # calculate stablity Bubble L4
+Scores2[i,3]<- BubStab(mat, 4,1,2) # calculate stablity Bubble L4
+Scores2[i,4]<- BubStab(mat, 4,1,3) # calculate stablity Bubble L4
+Scores2[i,5]<- BubStab(mat, 4,1,4) # calculate stablity Bubble L4
+Scores2[i,6]<- TripleStab(mat)
+Scores2[i,7]<- HClustStab(mat)
+jpeg("DistributionTest-ProbTax.jpg")
+boxplot(Scores2)
+dev.off()
+write.csv(x=Scores2, file = "DistributionTest-ProbTax.csv")
+}
+boxplot(Scores2)
+ProblemTaxStab<-Scores2
+is.numeric(dimersA)
+Scores2<- matrix(0, nrow=50, ncol=7)
+colnames(Scores2)<-c("B4-U-1", "B4-U-.5","B4-Q", "B4-E", "B4-S","Triplet", "H")
+mat<-dimersA
+for (i in 1:50){
+Scores2[i,1]<- BubStab(mat, 4,1,1) # calculate stablity Bubble L4
+Scores2[i,2]<- BubStab(mat, 4,.5,1) # calculate stablity Bubble L4
+Scores2[i,3]<- BubStab(mat, 4,1,2) # calculate stablity Bubble L4
+Scores2[i,4]<- BubStab(mat, 4,1,3) # calculate stablity Bubble L4
+Scores2[i,5]<- BubStab(mat, 4,1,4) # calculate stablity Bubble L4
+Scores2[i,6]<- TripleStab(mat)
+Scores2[i,7]<- HClustStab(mat)
+jpeg("DistributionTest-DimersA.jpg")
+boxplot(Scores2)
+dev.off()
+write.csv(x=Scores2, file = "DistributionTest-DimersA.csv")
+}
+Scores2<- matrix(0, nrow=50, ncol=7)
+colnames(Scores2)<-c("B4-U-1", "B4-U-.5","B4-Q", "B4-E", "B4-S","Triplet", "H")
+mat<-dimersB
+for (i in 1:50){
+Scores2[i,1]<- BubStab(mat, 4,1,1) # calculate stablity Bubble L4
+Scores2[i,2]<- BubStab(mat, 4,.5,1) # calculate stablity Bubble L4
+Scores2[i,3]<- BubStab(mat, 4,1,2) # calculate stablity Bubble L4
+Scores2[i,4]<- BubStab(mat, 4,1,3) # calculate stablity Bubble L4
+Scores2[i,5]<- BubStab(mat, 4,1,4) # calculate stablity Bubble L4
+Scores2[i,6]<- TripleStab(mat)
+Scores2[i,7]<- HClustStab(mat)
+jpeg("DistributionTest-DimersB.jpg")
+boxplot(Scores2)
+dev.off()
+write.csv(x=Scores2, file = "DistributionTest-DimersB.csv")
+}
+mat<-dimersC
+Scores2<- matrix(0, nrow=50, ncol=7)
+colnames(Scores2)<-c("B4-U-1", "B4-U-.5","B4-Q", "B4-E", "B4-S","Triplet", "H")
+for (i in 1:50){
+Scores2[i,1]<- BubStab(mat, 4,1,1) # calculate stablity Bubble L4
+Scores2[i,2]<- BubStab(mat, 4,.5,1) # calculate stablity Bubble L4
+Scores2[i,3]<- BubStab(mat, 4,1,2) # calculate stablity Bubble L4
+Scores2[i,4]<- BubStab(mat, 4,1,3) # calculate stablity Bubble L4
+Scores2[i,5]<- BubStab(mat, 4,1,4) # calculate stablity Bubble L4
+Scores2[i,6]<- TripleStab(mat)
+Scores2[i,7]<- HClustStab(mat)
+jpeg("DistributionTest-DimersB.jpg")
+boxplot(Scores2)
+dev.off()
+write.csv(x=Scores2, file = "DistributionTest-DimersB.csv")
+}
+Scores2<- matrix(0, nrow=50, ncol=7)
+colnames(Scores2)<-c("B4-U-1", "B4-U-.5","B4-Q", "B4-E", "B4-S","Triplet", "H")
+mat<-dimersB
+for (i in 1:50){
+Scores2[i,1]<- BubStab(mat, 4,1,1) # calculate stablity Bubble L4
+Scores2[i,2]<- BubStab(mat, 4,.5,1) # calculate stablity Bubble L4
+Scores2[i,3]<- BubStab(mat, 4,1,2) # calculate stablity Bubble L4
+Scores2[i,4]<- BubStab(mat, 4,1,3) # calculate stablity Bubble L4
+Scores2[i,5]<- BubStab(mat, 4,1,4) # calculate stablity Bubble L4
+Scores2[i,6]<- TripleStab(mat)
+Scores2[i,7]<- HClustStab(mat)
+jpeg("DistributionTest-DimersB.jpg")
+boxplot(Scores2)
+dev.off()
+write.csv(x=Scores2, file = "DistributionTest-DimersB.csv")
+}
+library(BubbleClustering)
+BTree1<-bubbleClustering(mat, 4,1,1)
+BtreeHalf<-bubbleClustering(mat, 4,.5,1)
+BtreeQ<-bubbleClustering(mat, 4,1,2)
+BtreeE<-bubbleClustering(mat, 4,1,3)
+BtreeS<-bubbleClustering(mat, 4,1,4)
+BtreeM<-bubbleClustering(mat, 4,1,5)
+TripTree<-tripletTree(mat)
+HcCompTree<-hclust(dist(mat), method = "complete")
+HcAvergTree<-hclust(dist(mat), method = "average")
+HcCentroidTree<-hclust(dist(mat), method = "centroid")
+AllTree<-list(BTree1,BtreeHalf,BtreeQ,BtreeE, BtreeS, BtreeM, TripTree,HcCompTree,HcAvergTree,HcCentroidTree)
+TreeDistMatrix<-matrix(data=NA,nrow=10,ncol=10)
+rownames(TreeDistMatrix)<-c("BTree1","BtreeHalf","BtreeQ","BtreeE", "BtreeS", "BtreeM", "TripTree","HcCompTree","HcAvergTree","HcCentroidTree")
+colnames(TreeDistMatrix)<-c("BTree1","BtreeHalf","BtreeQ","BtreeE", "BtreeS", "BtreeM", "TripTree","HcCompTree","HcAvergTree","HcCentroidTree")
+AllTree[1]
+AllTree[[i]]
+i=1
+AllTree[[i]]
+plot(AllTree[[i]])
+plot(AllTree[i])
+for(i in 1:10){
+for(j in 1:10){
+TreeDistMatrix[i,j]<-treeDist(AllTree[[i]],AllTree[[j]])
+}
+}
+TreeDistMatrix
+ProbTaxDM<-TreeDistMatrix
+save.image()
+mat<-dimersA
+BTree1<-bubbleClustering(mat, 4,1,1)
+BtreeHalf<-bubbleClustering(mat, 4,.5,1)
+BtreeQ<-bubbleClustering(mat, 4,1,2)
+BtreeE<-bubbleClustering(mat, 4,1,3)
+BtreeS<-bubbleClustering(mat, 4,1,4)
+BtreeM<-bubbleClustering(mat, 4,1,5)
+TripTree<-tripletTree(mat)
+HcCompTree<-hclust(dist(mat), method = "complete")
+HcAvergTree<-hclust(dist(mat), method = "average")
+HcCentroidTree<-hclust(dist(mat), method = "centroid")
+AllTree<-list(BTree1,BtreeHalf,BtreeQ,BtreeE, BtreeS, BtreeM, TripTree,HcCompTree,HcAvergTree,HcCentroidTree)
+for(i in 1:10){
+for(j in 1:10){
+TreeDistMatrix[i,j]<-treeDist(AllTree[[i]],AllTree[[j]])
+}
+}
+TreeDistMatrix
+DimerADM<-TreeDistMatrix
+ProbTaxDM
+mat<-dimersB
+BTree1<-bubbleClustering(mat, 4,1,1)
+BtreeHalf<-bubbleClustering(mat, 4,.5,1)
+BtreeQ<-bubbleClustering(mat, 4,1,2)
+BtreeE<-bubbleClustering(mat, 4,1,3)
+BtreeS<-bubbleClustering(mat, 4,1,4)
+BtreeM<-bubbleClustering(mat, 4,1,5)
+TripTree<-tripletTree(mat)
+HcCompTree<-hclust(dist(mat), method = "complete")
+HcAvergTree<-hclust(dist(mat), method = "average")
+HcCentroidTree<-hclust(dist(mat), method = "centroid")
+AllTree<-list(BTree1,BtreeHalf,BtreeQ,BtreeE, BtreeS, BtreeM, TripTree,HcCompTree,HcAvergTree,HcCentroidTree)
+#colnames(TreeDistMatrix)<-c("BTree1","BtreeHalf","BtreeQ","BtreeE", "BtreeS", "BtreeM", "TripTree","HcCompTree","HcAvergTree","HcCentroidTree")
+#TreeDistMatrix<-matrix(data=NA,nrow=10,ncol=10)
+for(i in 1:10){
+for(j in 1:10){
+TreeDistMatrix[i,j]<-treeDist(AllTree[[i]],AllTree[[j]])
+}
+}
+DimersBDM<-TreeDistMatrix
+ProbTaxDM
+View(DimerADM)
+View(DimersBDM)
+View(DimersBDM)
