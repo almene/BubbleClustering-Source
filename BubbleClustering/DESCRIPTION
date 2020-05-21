@@ -1,7 +1,7 @@
-Package: BubbleClustering
+Package: BubbleClusteringTesting
 Type: Package
-Title: Bubble Clustering
-Version: 0.2.0
+Title: Bubble ClusteringTesting
+Version: 0.1.0
 Author: Mandy Saunders
 Maintainer: Mandy Saunders <asaunder@uoguelph.ca>
 Description: This package contains functions to generate a hierarchical clustering using bubble 
@@ -9,6 +9,6 @@ Description: This package contains functions to generate a hierarchical clusteri
 License: GPL-2
 Encoding: UTF-8
 LazyData: true
-Depends: R (>= 3.6.0), Rcpp,RcppProgress, mclust
+Depends: R (>= 3.1.0), Rcpp,RcppProgress, mclust
 LinkingTo: Rcpp, RcppProgress, mclust
 RoxygenNote: 6.0.1
