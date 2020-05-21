@@ -15,11 +15,17 @@ library(mclust)
 
 
 bubbleClustering <-
-  function(data, level=3, Brad=1, RadiiDist=1, rewardType=1){
+  function(data, level=3, Brad=1, RadiiDist=1, rewardType=1, isDist=FALSE){
     ##if (RewardType=="membership") RT=0
     ##else if (RewardType=="radius") RT=1
    ## else (return(NULL))
-
+    if (isDist==FALSE){
+      isDistance=0
+    }
+    if (isDist==T){
+      isDistance=1
+      data<-data*data
+    }
     if (RadiiDist<1){
       message("That is not an appropriate distribution selection")
       stop()
@@ -49,8 +55,9 @@ bubbleClustering <-
 
     samples<-c(dim(data)[1])
     features<-c(dim(data)[2])
-    output<-.Call("bubble", data, samples, features, level, Brad, RadiiDist, rewardType, PACKAGE = "BubbleClustering")
-    test<-.Call("ATree", output, PACKAGE = "BubbleClustering")
+    output<-.Call("bubble", data, samples, features, level, Brad, RadiiDist, rewardType, isDistance, PACKAGE = "BubbleClusteringTesting")
+    output
+    test<-.Call("ATree", output, PACKAGE = "BubbleClusteringTesting")
 
     result<-structure(list(merge = test[[1]], height = test[[2]], order = test[[3]],
                            labels = rownames(data), method = "Bubble",
@@ -87,8 +94,8 @@ bubbleOrder <-
 
     samples<-c(dim(data)[1])
     features<-c(dim(data)[2])
-    output<-.Call("bubbleOrder", data, samples, features, level, verbose, PACKAGE = "BubbleClustering")
-    test<-.Call("ATree", output, PACKAGE = "BubbleClustering")
+    output<-.Call("bubbleOrder", data, samples, features, level, verbose, PACKAGE = "BubbleClusteringTesting")
+    test<-.Call("ATree", output, PACKAGE = "BubbleClusteringTesting")
 
     result<-structure(list(merge = test2[[1]], height = test2[[2]], order = test2[[3]],
                            labels = rownames(data), method = "Bubble",
@@ -108,7 +115,7 @@ bubbleOrder <-
 #' BubStab(data, 4, .75)
 #' BubStab(data)
 #'
-BubStab<- function(data,level=4, Brad=1 ,RadDist=1, rewardT=1){ ## data is the data and tree is the Bubble output
+BubStab<- function(data,level=3, Brad=1 ,RadDist=1, rewardT=1, is_distance=F){ ## data is the data and tree is the Bubble output
   if (is.matrix(data)==FALSE){
     message("The data needs to be a numeric matrix")
     stop()
@@ -118,7 +125,7 @@ BubStab<- function(data,level=4, Brad=1 ,RadDist=1, rewardT=1){ ## data is the d
     stop()
   }
 
-  tree<-bubbleClustering(data,level, Brad, RadDist,rewardT)
+  tree<-bubbleClustering(data,level, Brad, RadDist,rewardT, is_distance)
   merge<-tree$merge
   totalStab=0
   LD<-length(data[1,])
@@ -127,11 +134,10 @@ BubStab<- function(data,level=4, Brad=1 ,RadDist=1, rewardT=1){ ## data is the d
     if (i==1) {rbldDat<-data[c(2:LP),]}
     else if(i==LP) {rbldDat<-data[c(1:(LP-1)), ]}
     else {rbldDat<-data[c(1:(i-1), (i+1):LP),]} ## make the appropriate merge tables with the target data point removed
-    RBub<-bubbleClustering(rbldDat,level)
+    RBub<-bubbleClustering(rbldDat,level, Brad, RadDist,rewardT, is_distance)
 
     Sdata<-.Call("snip", merge, i)
     Rdata<-.Call("rebuild", RBub$merge)
-
     runStab<-sum(sqrt((Sdata- Rdata)^2))
     totalStab<-totalStab+runStab
   }
@@ -216,8 +222,14 @@ BubStabHist<- function(data,level=4, Brad=1 ,verbose=FALSE, Type="original"){ ##
 #' HClustStab(data, "complete")
 #' HClustStab(data, method= "ward.D")
 #'
-HClustStab<- function(data, method="complete"){ ## data is the data and tree is the Bubble output
-  Distdata<-dist(data)
+HClustStab<- function(data, method="complete", is_dist=F){ ## data is the data and tree is the Bubble output
+  if (is_dist==F){
+    Distdata<-dist(data)
+  }
+  else{
+    Distdata<-as.dist(data)
+  }
+
   tree<-hclust(Distdata, method)
   merge<-tree$merge
   totalStab=0
@@ -323,7 +335,7 @@ noIOhc<-
     for (i in 1:samples){distMat[i,i]=0.000001}
 
 
-    test<-.Call("ATree", distMat, PACKAGE = "BubbleClustering")
+    test<-.Call("ATree", distMat, PACKAGE = "BubbleClusteringTesting")
 
     result<-structure(list(merge = test[[1]], height = test[[2]], order = test[[3]],
                            labels = rownames(data), method = "noIOhc",
@@ -380,8 +392,8 @@ tripletTree<-
 
     samples<-c(dim(data)[1])
     features<-c(dim(data)[2])
-    output<-.Call("tripleComp", data, samples, features, verbose, PACKAGE = "BubbleClustering")
-    test<-.Call("ATree", output, PACKAGE = "BubbleClustering")
+    output<-.Call("tripleComp", data, samples, features, verbose, PACKAGE = "BubbleClusteringTesting")
+    test<-.Call("ATree", output, PACKAGE = "BubbleClusteringTesting")
 
     result<-structure(list(merge = test[[1]], height = test[[2]], order = test[[3]],
                            labels = rownames(data), method = "Bubble",
