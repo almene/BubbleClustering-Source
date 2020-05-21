@@ -1,0 +1,3 @@
+useDynLib(BubbleClustering)
+exportPattern("^[[:alpha:]]+")
+importFrom("stats", "dist", "hclust")
