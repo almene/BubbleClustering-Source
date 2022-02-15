@@ -10,6 +10,7 @@
 #include <vector>
 #include <string>
 // [[Rcpp::depends(RcppProgress)]]
+// [[Rcpp::Range]]
 #include <progress.hpp>
 #include <progress_bar.hpp>
 
@@ -63,7 +64,50 @@ void findminMAX(int&lines, int& features, Rcpp::NumericMatrix& distMat){//find t
 
 }
 
-void memberate(int v,double r, int& lines, int& features, Rcpp::NumericMatrix& distMat, int* member){//find membership
+void addTo(int addVect[], int*** arrayPnt, int locationX, int locationY, int nSamples){
+  for(int i = 0; i < nSamples; i++){
+    arrayPnt[locationX][locationY][i] = int (addVect[i]);
+  }
+}
+
+void memberate(int v,double r, Rcpp::NumericMatrix& orderMat, Rcpp::NumericMatrix& distMat, int* member, int*** mArray ){//find membership
+
+  int size = distMat.ncol();
+  int ls = 0;
+  int rs = size - 1;
+  int check;
+
+  while (rs - ls > 1){
+    check = floor((rs - ls) / 2) + ls;
+    int dist_index = orderMat(v, check);
+    if (distMat(v, dist_index) < r){
+      ls = check;}
+      else
+       { rs = check;}
+    }
+    double Z = ls+1;
+
+  reward=1.0/(Z); //compute the reward
+  int firstEntry = mArray[v][ls][0];
+ if(firstEntry!=-1){
+   for(int i=0;i<size;i++){
+     member[i] = mArray[v][ls][i];
+   }}
+ else{
+   mArray[v][ls][0]=0;
+   for(int i=0;i<ls+1;i++){
+     int j=orderMat(v,i);
+     mArray[v][ls][j]=1;
+   }
+   for(int i=0;i<size;i++){
+     member[i] = mArray[v][ls][i];
+   }
+ }
+}
+
+/*
+
+ void memberate(int v,double r, int& lines, int& features, Rcpp::NumericMatrix& distMat, int* member){//find membership
 
   int i;  //loop index
 
@@ -75,6 +119,9 @@ void memberate(int v,double r, int& lines, int& features, Rcpp::NumericMatrix& d
 
   reward=1.0/((double)Z); //compute the reward
 }
+ */
+
+
 
 void Flatten(int&lines, Rcpp::NumericMatrix& A){//zero the assoicator
 
@@ -107,7 +154,7 @@ double RadiiDistQ(double MedianRadius){ //quadratically favors shorter radii
   return(MedianRadius*u/(1-u));
 }
 
-//Warning -- this function uses a MEdian Radius about 75% of the real median radius to work right
+//Warning -- this function uses a Median Radius about 75% of the real median radius to work right
 double RadiiDistE(double MedianRadius){ //exponenitally favors shorter radii
 
   double u=0;
@@ -133,8 +180,43 @@ Rcpp::NumericMatrix gen_dist(Rcpp::NumericMatrix data){
 }
 
 
+// Generate matrix with samples in ascending distance order
+
+Rcpp::NumericMatrix orderMatrix(Rcpp::NumericMatrix data_matrix){
+  Rcpp::NumericMatrix distanceMat(data_matrix);
+  int nl = distanceMat.nrow();
+  Rcpp::NumericMatrix returnMat(nl);
+
+  for (int k=0;k<nl;k++){ // for each possible center
+    vector<int> rowOrder(nl, -1 );
+    //smallest distance is always itself
+    rowOrder.insert(rowOrder.begin(),k);
+    for (int j=0;j<nl;j++){ //for each possible point has a distance with
+      if (j==k){continue;} // k already in vector
+      for (int i=0; i<nl; i++){//go through the vector from start to finish
+        if (rowOrder[i] == -1){rowOrder.insert(rowOrder.begin()+i, j); break;}
+        // if the distance between k and j is larger than k and rowOrder[i]
+        //keep looking
+        int ithPos;
+        ithPos = rowOrder[i];
+        if (distanceMat(k,ithPos)<distanceMat(k,j)) { continue;}
+        else{ // place j into the position where dist(j) switches from being
+          //smaller to larger or equal to dist(i) and stop
+          rowOrder.insert(rowOrder.begin()+i, j);
+          break;
+        }
+      }
+    // populate row of NumericMatrix
+    for (int l=0;l<nl;l++){
+      returnMat(k,l) = rowOrder[l];
+    }
+  }
+}
+  return returnMat;
+}
+
 // Main R program
-RcppExport SEXP bubble(SEXP data_matrix, SEXP samples, SEXP columns, SEXP bubbleLevel, SEXP bubbleSize, SEXP RadiiDist, SEXP RewardType, SEXP is_dist){//main routine
+RcppExport SEXP bubble(SEXP data_matrix, SEXP samples, SEXP columns, SEXP bubbleLevel, SEXP bubbleSize, SEXP RadiiDist, SEXP RewardType, SEXP logic){//main routine
   //extract the information that is passed to C++ and put it in usable forms
 
   Rcpp::NumericVector error1(1);
@@ -144,7 +226,7 @@ RcppExport SEXP bubble(SEXP data_matrix, SEXP samples, SEXP columns, SEXP bubble
   int lines=dim1[0]; //extract #lines from R data
   Rcpp::NumericVector dim2(columns);
   int features=dim2[0]; //extract # of features from R data
-
+  const int nSample = lines; // used for generating array sizes
   Rcpp::NumericVector Type(RadiiDist);
   int RadiiT=Type[0]; // extract the radii distribution type
 
@@ -164,25 +246,52 @@ RcppExport SEXP bubble(SEXP data_matrix, SEXP samples, SEXP columns, SEXP bubble
   long double sizeB=dim4[0]; // extract Bubble max size
 
   Rcpp::NumericVector dim5(RewardType);
-  Rcpp::NumericVector distTrue(is_dist);
-
+  Rcpp::NumericVector logicV(logic);
 
   int SAM=lines*pow(10, numB);
 
+  //generate initial membership array
+  int*** memArray = new int**[nSample];
+  for(int i = 0; i < nSample; i++){
+    memArray[i] = new int*[nSample];
+    for(int j = 0; j < nSample; j++){
+      memArray[i][j] = new int[nSample];
+    }
+  }
+    // and initialize
+    for(int i = 0; i < nSample; i++){
+      for(int j = 0; j < nSample; j++){
+        for(int k=0; k< nSample; k++){
+          memArray[i][j][k] = -1;
+        }
+      }
+
+  }
+
   //generate distance matrix
-  if (distTrue[0]==0){
+  if (logicV[0]==0){
     distMat = gen_dist(data);
   }
-  if (distTrue[0]==1){
+  if (logicV[0]==1){
     distMat=data;
+  }
+  bool verbose=TRUE;
+
+  if (logicV[1]==0){
+    verbose = FALSE;
+  }
+  if (logicV[1]==1){
+    verbose = TRUE;
   }
 
   findminMAX(lines, features, distMat);   //find the minimum and maximum values
   MAXX-=minn;     //normalize the maximum
   //cout<<MAXX<<endl;
-  Progress p(SAM, TRUE);
+  Progress p(SAM, verbose);
 
+  //generate the sorted sample matrix
 
+  Rcpp::NumericMatrix  oMat = orderMatrix(distMat);
 
   for(i=0;i<SAM;i++){//loop over samples
 
@@ -206,7 +315,7 @@ RcppExport SEXP bubble(SEXP data_matrix, SEXP samples, SEXP columns, SEXP bubble
 
     //if(i%100==0){cout<<radius<<endl;}
     j=i%lines;          //generate core vertex
-    memberate(j,radius, lines, features, distMat, member);        //find the membership fuction
+    memberate(j,radius, oMat, distMat, member, memArray);        //find the membership function
     Associate(lines, member, A);                //update the associator
     //print progress bar and check for abort
     if (Progress::check_abort() ){ return error1;}
@@ -215,59 +324,16 @@ RcppExport SEXP bubble(SEXP data_matrix, SEXP samples, SEXP columns, SEXP bubble
   }
   cout<<endl;
 
+  //clean up memory
+  for (int i = 0; i < lines; i++)
+  {
+    for (int j = 0; j < lines; j++)
+      delete[] memArray[i][j];
 
-  return A;     //pass the associator matrix back to R
-}
-
-RcppExport SEXP bubbleOrder(SEXP data_matrix, SEXP samples, SEXP columns, SEXP bubbleLevel, bool display_progress){//main routine
-  //extract the information that is passed to C++ and put it in usable forms
-
-  Rcpp::NumericVector error1(1);
-
-  Rcpp::NumericMatrix data(data_matrix); //data matrix
-  Rcpp::NumericVector dim1(samples);
-  int lines=dim1[0]; //extract #lines from R data
-  Rcpp::NumericVector dim2(columns);
-  int features=dim2[0]; //extract # of features from R data
-
-  //generate all variables that require information from R
-  Rcpp::NumericMatrix A(lines, lines); //make R data varaibale
-
-  // initialize Associator matrix with small + value
-  fill(A.begin(), A.end(), 0.1);
-
-  int member[lines];             //characteristic function
-  int i,j;        //loop indices
-  double radius;  //critical radius
-  Rcpp::NumericVector dim3(bubbleLevel);
-
-  int numB=dim3[0]; //extract Bubble level from R data
-  int divisions=pow(10, numB);
-  int SAM=lines*divisions;
-
-  findminMAX(lines, features, data);   //find the minimum and maximum values
-  MAXX-=minn;     //normalize the maximum
-  //cout<<MAXX<<endl;
-  Progress p(SAM, display_progress);
-
-  for(i=0;i<divisions;i++){//loop over samples
-    double sizeB=(i%divisions)*1.0/divisions;
-
-    radius=MAXX*sizeB+minn; //generate a random critical radius
-    //if(i%10==0){cout<<sizeB<<"\t"<<radius<<endl;}
-    //if(i%100==0){cout<<radius<<endl;}
-    for (int s=0;s<lines;s++){
-      j=i%lines;//generate core vertex
-    memberate(j,radius, lines, features, data, member);        //find the membership fuction
-    Associate(lines, member, A);                //update the associator
-    }
-    //print progress bar and check for abort
-    if (Progress::check_abort() ){ return error1;}
-    p.increment(); // update progress
-
+    delete[] memArray[i];
   }
-  cout<<endl;
 
+  delete[] memArray;
 
   return A;     //pass the associator matrix back to R
 }
@@ -352,7 +418,7 @@ RcppExport SEXP ATree(SEXP associator_matrix){
       else rowB=-1;
     }
 
-    //add the appropriate values to the merge table, a or b alread present include +row else -a and -b
+    //add the appropriate values to the merge table, a or b already present include +row else -a and -b
     if (rowA<0) Merge(numal,0)=-(a+1);
     else Merge(numal,0)= (rowA);
     if (rowB<0) Merge(numal,1)=-(b+1);
@@ -373,7 +439,7 @@ RcppExport SEXP ATree(SEXP associator_matrix){
   }
 
   vector<int> C_Order(nl);
-  for (int i=0; i<2; i++) C_Order[i]=Merge(nl-2,i);  //grab the last line of the merge table -1 for index -1 because n-1 # of joins
+  for (int i=0; i<2; i++) C_Order[i]= Merge(nl-2,i);  //grab the last line of the merge table -1 for index -1 because n-1 # of joins
   for (int i=0; i<nl; i++){//go through the vector from start to finish
     if (C_Order[i]>0) {
       int nodePoint=C_Order[i]-1; //index that node point is pointing towards
@@ -514,7 +580,7 @@ RcppExport SEXP rebuild(SEXP margeTable){
       vector<int> MCC(nl); // reusable vector to determine size of MCC
 
       int flagg=0;
-      for (int i=Frow;i<(nl-2);i++){ // skip to the line where the last of a or b appears -need both in subtree
+      for (int i=Frow;i<(nl-1);i++){ // skip to the line where the last of a or b appears -need both in subtree
         for (int j=0; j<2 ; j++){
           int results=contains(Merge, Merge(i,j), a , b); // check to see if subtree has both
 
@@ -535,7 +601,7 @@ RcppExport SEXP rebuild(SEXP margeTable){
         if (flagg==1) break;
       }
 
-      if (flagg==0) MCC_Size[MCi]=nl-1; // if not a sub tree is whole tree - removed point
+      if (flagg==0) MCC_Size[MCi]=nl; // if not a sub tree is whole tree - removed point
       else {
         //remove all empty spaces in vector and removed point
 
